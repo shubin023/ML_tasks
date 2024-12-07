@@ -153,8 +153,26 @@ class DBScan:
             Минимальный размер листа для KDTree.
 
         """
-        pass
-        
+        self.eps = eps
+        self.min_samples = min_samples
+        self.leaf_size = leaf_size
+        self.metric = metric
+        self.X = None
+        self.labels = None
+
+    def DFS_rec(self, graph, s, clust_label):
+        self.labels[s] = clust_label
+        for i in graph[s]:
+            if self.labels[i] == -1:
+                self.DFS_rec(graph, i, clust_label)
+
+    def DFS(self, graph):
+        label = 0
+        for i in range(len(graph)):
+            if self.labels[i] == -1 and graph[i].size > 0:
+                self.DFS_rec(graph, i, label)
+                label += 1
+
     def fit_predict(self, X: np.array, y = None) -> np.array:
         """
         Кластеризует элементы из X, 
@@ -174,8 +192,17 @@ class DBScan:
             (Для каждой точки из X индекс соотв. кластера).
 
         """
-        pass
+        self.X = X
+        self.labels = np.zeros(self.X.shape[0], dtype=int) - 1
+        kdtree = KDTree(self.X, leaf_size=self.leaf_size, metric=self.metric)
+        neighbours = kdtree.query_radius(self.X, r=self.eps)
+        graph = [np.array([]) for _ in range(X.shape[0])]
+        for i, point_heighb in enumerate(neighbours):
+            if point_heighb.size >= self.min_samples:
+                graph[i] = point_heighb
+        self.DFS(graph)
 
+        return self.labels
 # Task 3
 
 class AgglomertiveClustering:
