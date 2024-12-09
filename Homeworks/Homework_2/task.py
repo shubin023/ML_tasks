@@ -1,5 +1,6 @@
 from sklearn.neighbors import KDTree
 import numpy as np
+import heapq
 import random
 import copy
 from collections import deque
@@ -153,8 +154,26 @@ class DBScan:
             Минимальный размер листа для KDTree.
 
         """
-        pass
-        
+        self.eps = eps
+        self.min_samples = min_samples
+        self.leaf_size = leaf_size
+        self.metric = metric
+        self.X = None
+        self.labels = None
+
+    def DFS_rec(self, graph, s, clust_label):
+        self.labels[s] = clust_label
+        for i in graph[s]:
+            if self.labels[i] == -1:
+                self.DFS_rec(graph, i, clust_label)
+
+    def DFS(self, graph):
+        label = 0
+        for i in range(len(graph)):
+            if self.labels[i] == -1 and graph[i].size > 0:
+                self.DFS_rec(graph, i, label)
+                label += 1
+
     def fit_predict(self, X: np.array, y = None) -> np.array:
         """
         Кластеризует элементы из X, 
@@ -174,33 +193,45 @@ class DBScan:
             (Для каждой точки из X индекс соотв. кластера).
 
         """
-        pass
+        self.X = X
+        self.labels = np.zeros(self.X.shape[0], dtype=int) - 1
+        kdtree = KDTree(self.X, leaf_size=self.leaf_size, metric=self.metric)
+        neighbours = kdtree.query_radius(self.X, r=self.eps)
+        graph = [np.array([]) for _ in range(X.shape[0])]
+        for i, point_heighb in enumerate(neighbours):
+            if point_heighb.size >= self.min_samples:
+                graph[i] = point_heighb
+        self.DFS(graph)
 
+        return self.labels
 # Task 3
 
-class AgglomertiveClustering:
+class AgglomerativeClustering:
     def __init__(self, n_clusters: int = 16, linkage: str = "average"):
         """
-        
+
         Parameters
         ----------
         n_clusters : int
-            Количество кластеров, которые необходимо найти (то есть, кластеры 
+            Количество кластеров, которые необходимо найти (то есть, кластеры
             итеративно объединяются, пока их не станет n_clusters)
         linkage : str
             Способ для расчета расстояния между кластерами. Один из 3 вариантов:
-            1. average --- среднее расстояние между всеми парами точек, 
+            1. average --- среднее расстояние между всеми парами точек,
                где одна принадлежит первому кластеру, а другая - второму.
-            2. single --- минимальное из расстояний между всеми парами точек, 
+            2. single --- минимальное из расстояний между всеми парами точек,
                где одна принадлежит первому кластеру, а другая - второму.
             3. complete --- максимальное из расстояний между всеми парами точек,
                где одна принадлежит первому кластеру, а другая - второму.
         """
-        pass
-    
-    def fit_predict(self, X: np.array, y = None) -> np.array:
+        self.n_clusters = n_clusters
+        self.linkage = linkage
+        self.X = None
+        self.labels = None
+
+    def fit_predict(self, X: np.array, y=None) -> np.array:
         """
-        Кластеризует элементы из X, 
+        Кластеризует элементы из X,
         для каждого возвращает индекс соотв. кластера.
         Parameters
         ----------
@@ -208,7 +239,7 @@ class AgglomertiveClustering:
             Набор данных, который необходимо кластеризовать.
         y : Ignored
             Не используемый параметр, аналогично sklearn
-            (в sklearn считается, что все функции fit_predict обязаны принимать 
+            (в sklearn считается, что все функции fit_predict обязаны принимать
             параметры X и y, даже если y не используется).
         Return
         ------
@@ -217,4 +248,49 @@ class AgglomertiveClustering:
             (Для каждой точки из X индекс соотв. кластера).
 
         """
-        pass
+        self.X = X
+        self.labels = np.arange(self.X.shape[0])
+        dist_matrix = np.linalg.norm(X[:, None, :] - X[None, :, :], axis=-1)
+        np.fill_diagonal(dist_matrix, np.inf)
+
+        while np.unique(self.labels).size > self.n_clusters:
+            min_value = np.argmin(dist_matrix)
+            clust_join_1, clust_join_2 = np.unravel_index(min_value, dist_matrix.shape)
+
+            clust_1_num = self.labels[self.labels == clust_join_1].size
+            clust_2_num = self.labels[self.labels == clust_join_2].size
+            self.labels[self.labels == clust_join_2] = clust_join_1
+
+            if self.linkage == 'average':
+                for label in np.unique(self.labels):
+                    if clust_join_1 != label:
+                        dist_matrix[clust_join_1][label] = ((clust_1_num * dist_matrix[clust_join_1][label]
+                                                             + clust_2_num * dist_matrix[clust_join_2][label])
+                                                            / (clust_1_num + clust_2_num))
+
+                        dist_matrix[label][clust_join_1] = ((clust_1_num * dist_matrix[label][clust_join_1]
+                                                             + clust_2_num * dist_matrix[label][clust_join_2])
+                                                            / (clust_1_num + clust_2_num))
+            elif self.linkage == 'single':
+                for label in np.unique(self.labels):
+                    if clust_join_1 != label:
+                        dist_matrix[clust_join_1][label] = min(dist_matrix[clust_join_1][label],
+                                                               dist_matrix[clust_join_2][label])
+
+                        dist_matrix[label][clust_join_1] = min(dist_matrix[label][clust_join_1],
+                                                               dist_matrix[label][clust_join_2])
+            elif self.linkage == 'complete':
+                for label in np.unique(self.labels):
+                    if clust_join_1 != label:
+                        dist_matrix[clust_join_1][label] = max(dist_matrix[clust_join_1][label],
+                                                               dist_matrix[clust_join_2][label])
+
+                        dist_matrix[label][clust_join_1] = max(dist_matrix[label][clust_join_1],
+                                                               dist_matrix[label][clust_join_2])
+
+            dist_matrix[:, clust_join_2] = np.inf
+            dist_matrix[clust_join_2, :] = np.inf
+
+        _, self.labels = np.unique(self.labels, return_inverse=True)
+
+        return self.labels
