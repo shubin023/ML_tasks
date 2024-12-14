@@ -44,7 +44,7 @@ class GradientLR:
 
             w = w - self.alpha * (gradient_part + L_1_reg_part)
 
-            if iteration % 900 == 0:
+            if iteration % 1000 == 0:
                 loss = mse(y, X_1 @ w) + self.l * (np.sum(np.abs(w)) - abs(w[-1]))
                 if abs(prev_loss - loss) < 1e-2:
                     break
@@ -59,7 +59,8 @@ class GradientLR:
 # Task 4
 
 def get_feature_importance(linear_regression):
-    return abs(linear_regression.weights) / sum(abs(linear_regression.weights))
+    weights_not_bias = linear_regression.weights[:-1]
+    return abs(weights_not_bias) / sum(abs(weights_not_bias))
 
 def get_most_important_features(linear_regression):
     imp_arr = sorted([(i, imp) for i, imp in enumerate(get_feature_importance(linear_regression))], key=lambda x: x[1], reverse=True)
