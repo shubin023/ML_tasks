@@ -15,7 +15,7 @@ class NormalLR:
         self.weights = None
     
     def fit(self, X:np.ndarray, y:np.ndarray):
-        X_1 = np.column_stack((X, np.array([1] * X.shape[0])))
+        X_1 = np.hstack((X, np.ones((X.shape[0], 1))))
         self.weights = np.linalg.inv(X_1.T @ X_1) @ X_1.T @ y
     
     def predict(self, X:np.ndarray) -> np.ndarray:
@@ -26,18 +26,41 @@ class NormalLR:
 
 class GradientLR:
     def __init__(self, alpha:float, iterations=10000, l=0.):
-        self.weights = None # Save weights here
+        self.weights = None
+        self.alpha = alpha
+        self.iterations = iterations
+        self.l = l
     
     def fit(self, X:np.ndarray, y:np.ndarray):
-        pass
+        X_1 = np.hstack((X, np.ones((X.shape[0], 1))))
+        n = X_1.shape[0]
 
-    def predict(self, X:np.ndarray):
-        pass
+        w = np.random.randn(X_1.shape[1]) * 0.01
+        prev_loss = float('inf')
+        for iteration in range(self.iterations):
+            gradient_part = 2 / n * X_1.T @ (X_1 @ w - y)
+            L_1_reg_part = self.l * np.sign(w)
+            L_1_reg_part[-1] = 0
+
+            w = w - self.alpha * (gradient_part + L_1_reg_part)
+
+            if iteration % 900 == 0:
+                loss = mse(y, X_1 @ w) + self.l * (np.sum(np.abs(w)) - abs(w[-1]))
+                if abs(prev_loss - loss) < 1e-2:
+                    break
+
+        self.weights = w
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        X_1 = np.column_stack((X, np.array([1] * X.shape[0])))
+        return X_1 @ self.weights
+
 
 # Task 4
 
 def get_feature_importance(linear_regression):
-    return []
+    return abs(linear_regression.weights) / sum(abs(linear_regression.weights))
 
 def get_most_important_features(linear_regression):
-    return []
+    imp_arr = sorted([(i, imp) for i, imp in enumerate(get_feature_importance(linear_regression))], key=lambda x: x[1], reverse=True)
+    return [x[0] for x in imp_arr]
