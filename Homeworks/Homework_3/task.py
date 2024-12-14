@@ -12,14 +12,16 @@ def r2(y_true:np.ndarray, y_predicted:np.ndarray):
 
 class NormalLR:
     def __init__(self):
-        self.weights = None # Save weights here
+        self.weights = None
     
     def fit(self, X:np.ndarray, y:np.ndarray):
-        pass
+        X_1 = np.column_stack((X, np.array([1] * X.shape[0])))
+        self.weights = np.linalg.inv(X_1.T @ X_1) @ X_1.T @ y
     
     def predict(self, X:np.ndarray) -> np.ndarray:
-        pass
-    
+        X_1 = np.column_stack((X, np.array([1] * X.shape[0])))
+        return X_1 @ self.weights
+
 # Task 3
 
 class GradientLR:
