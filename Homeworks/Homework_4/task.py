@@ -96,8 +96,8 @@ class PerceptronBest:
         Вы можете добавлять свои поля в класс.
         
         """
-
         self.w = None
+        self.iterations = iterations
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> NoReturn:
         """
@@ -117,7 +117,26 @@ class PerceptronBest:
             Набор меток классов для данных.
         
         """
-        pass
+        y_true = y.copy()
+        y_true[y_true == np.unique(y_true)[0]] = -1
+        y_true[y_true == np.unique(y_true)[1]] = 1
+        X_new = np.hstack((np.ones((X.shape[0], 1)), X))
+        self.w = np.zeros(X_new.shape[1], dtype=float)
+        wrong_labels_cnt = X_new.shape[0]
+        best_w = np.copy(self.w)
+        for _ in range(self.iterations - 10000):
+            margins = (self.w @ X_new.T) * y_true
+            wrong_labels = margins <= 0
+            if wrong_labels.sum() < wrong_labels_cnt:
+                best_w = np.copy(self.w)
+                wrong_labels_cnt = wrong_labels.shape[0]
+            self.w += y_true[wrong_labels] @ X_new[wrong_labels]
+        margins = (self.w @ X_new.T) * y_true
+        wrong_labels = margins <= 0
+        if wrong_labels.sum() < wrong_labels_cnt:
+            best_w = np.copy(self.w)
+        self.w = np.copy(best_w)
+
             
     def predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -135,7 +154,10 @@ class PerceptronBest:
             (по одной метке для каждого элемента из X).
         
         """
-        pass
+        X_new = np.hstack((np.ones((X.shape[0], 1)), X))
+        answer = np.sign(self.w @ X_new.T)
+        answer[answer == -1] = 0
+        return answer
     
 # Task 3
 
