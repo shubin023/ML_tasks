@@ -26,6 +26,7 @@ class Perceptron:
         
         """
         self.w = None
+        self.labels = None
         self.iterations = iterations
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> NoReturn:
@@ -43,8 +44,9 @@ class Perceptron:
         
         """
         y_true = y.copy()
-        y_true[y_true == np.unique(y_true)[0]] = -1
-        y_true[y_true == np.unique(y_true)[1]] = 1
+        self.labels = np.unique(y_true)
+        y_true[y_true == self.labels[0]] = -1
+        y_true[y_true == self.labels[1]] = 1
         X_new = np.hstack((np.ones((X.shape[0], 1)), X))
         self.w = np.zeros(X_new.shape[1], dtype=float)
         for _ in range(self.iterations):
@@ -70,7 +72,8 @@ class Perceptron:
         """
         X_new = np.hstack((np.ones((X.shape[0], 1)), X))
         answer = np.sign(self.w @ X_new.T)
-        answer[answer == -1] = 0
+        answer[answer == -1] = self.labels[0]
+        answer[answer == 1] = self.labels[1]
         return answer
     
 # Task 2
@@ -97,6 +100,7 @@ class PerceptronBest:
         
         """
         self.w = None
+        self.labels = None
         self.iterations = iterations
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> NoReturn:
@@ -118,18 +122,19 @@ class PerceptronBest:
         
         """
         y_true = y.copy()
+        self.labels = np.unique(y_true)
         y_true[y_true == np.unique(y_true)[0]] = -1
         y_true[y_true == np.unique(y_true)[1]] = 1
         X_new = np.hstack((np.ones((X.shape[0], 1)), X))
         self.w = np.zeros(X_new.shape[1], dtype=float)
         wrong_labels_cnt = X_new.shape[0]
         best_w = np.copy(self.w)
-        for _ in range(self.iterations - 10000):
+        for _ in range(self.iterations):
             margins = (self.w @ X_new.T) * y_true
             wrong_labels = margins <= 0
             if wrong_labels.sum() < wrong_labels_cnt:
                 best_w = np.copy(self.w)
-                wrong_labels_cnt = wrong_labels.shape[0]
+                wrong_labels_cnt = wrong_labels.sum()
             self.w += y_true[wrong_labels] @ X_new[wrong_labels]
         margins = (self.w @ X_new.T) * y_true
         wrong_labels = margins <= 0
@@ -156,7 +161,8 @@ class PerceptronBest:
         """
         X_new = np.hstack((np.ones((X.shape[0], 1)), X))
         answer = np.sign(self.w @ X_new.T)
-        answer[answer == -1] = 0
+        answer[answer == -1] = self.labels[0]
+        answer[answer == 1] = self.labels[1]
         return answer
     
 # Task 3
@@ -177,4 +183,16 @@ def transform_images(images: np.ndarray) -> np.ndarray:
         Двумерная матрица с преобразованными изображениями.
         Её размерность: (n_images, 2).
     """
-    return np.zeros((images.shape[0], 2))
+    top_half = images[:, :images.shape[1] // 2, :]
+    bottom_half = images[:, images.shape[1] // 2:, :]
+    brightness_gradient = np.mean(top_half, axis=(1, 2)) - np.mean(bottom_half, axis=(1, 2))
+
+    n_images, height, width = images.shape
+    pixel_positions = np.arange(height).reshape(-1, 1)
+    vertical_center_of_mass = np.sum(images * pixel_positions, axis=(1, 2)) / np.sum(images, axis=(1, 2))
+
+    # width = images.shape[2]
+    # pixel_positions = np.arange(width)
+    # horizontal_center_of_mass = np.sum(images * pixel_positions, axis=(1, 2)) / np.sum(images, axis=(1, 2))
+
+    return np.column_stack((brightness_gradient, vertical_center_of_mass))
