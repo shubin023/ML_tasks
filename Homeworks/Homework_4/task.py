@@ -25,7 +25,6 @@ class Perceptron:
         Вы можете добавлять свои поля в класс.
         
         """
-
         self.w = None
         self.iterations = iterations
     
@@ -43,13 +42,15 @@ class Perceptron:
             Набор меток классов для данных.
         
         """
-        y[y == np.unique(y)[0]] = 0
-        y[y == np.unique(y)[1]] = 1
-        X_new = np.column_stack((np.array([1] * X.shape[0]), X))
-        self.w = np.array([0] * X_new.shape[1])
+        y_true = y.copy()
+        y_true[y_true == np.unique(y_true)[0]] = -1
+        y_true[y_true == np.unique(y_true)[1]] = 1
+        X_new = np.hstack((np.ones((X.shape[0], 1)), X))
+        self.w = np.zeros(X_new.shape[1], dtype=float)
         for _ in range(self.iterations):
-            wrong_labels = np.sign(self.w @ X_new.T) != y
-            self.w = self.w + np.sum(y[wrong_labels].reshape((-1, 1)) * X_new[wrong_labels], axis=0)
+            margins = (self.w @ X_new.T) * y_true
+            wrong_labels = margins <= 0
+            self.w += y_true[wrong_labels] @ X_new[wrong_labels]
             
     def predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -67,7 +68,7 @@ class Perceptron:
             (по одной метке для каждого элемента из X).
         
         """
-        X_new = np.column_stack((np.array([1] * X.shape[0]), X))
+        X_new = np.hstack((np.ones((X.shape[0], 1)), X))
         answer = np.sign(self.w @ X_new.T)
         answer[answer == -1] = 0
         return answer
